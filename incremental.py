@@ -16,6 +16,12 @@ DESIGN CHOICE: To allow for strings shorter than max_sent_length, added EMPTY
 lexical item as placeholder. Short but fully linked parses, e.g., the->dog
 EMPTY, are fully harmonious.
 
+CHANGE TO PREV. CHOICE (5/24): Only parses with all required attachments are
+now fully harmonious. This is done by implementing the at-most-one-hot rule
+as a local constraint for each attch. site.
+
+DESIGN CHOICE: A seq. of all EMPTYs has a local harmony of missing_link_penalty
+
 DESIGN CHOICE: Ambiguous words are disambiguated in the lexicon file, but if
 they share a phonological form, only a single phonological form is used for
 making the dimension names. This is also how optional attachments can be
@@ -167,7 +173,6 @@ class Struct(object):
             phon[self.idx_phon_dict[word_phon]] = 1.0
             curr.extend([i for i in phon])
             curr.extend(self.lexicon[word]['head'])
-#            curr_ndeps = len(self.lexicon[word])
             if self.lexicon[word]['dependents'] is None:
                 curr.extend([-1.] * self.ndep * self.nfeatures)
             else:
@@ -175,7 +180,7 @@ class Struct(object):
                     curr.extend(self.lexicon[word]['dependents'][dep])
                 ndeps = len(self.lexicon[word]['dependents'])
                 if ndeps > 0:
-                    # Code non-existent features as -1s...
+                    # Code non-existent features as -1s as placeholders
                     curr.extend([-1.] * (self.ndep-ndeps) * self.nfeatures)
             word_list.append(curr)
         return np.array(word_list)
@@ -405,9 +410,11 @@ class Struct(object):
         if test_vec in self.centers.tolist():
             lidx = np.where((self.centers == test_vec).all(axis=1))
             lharmony = self.local_harmonies[lidx]
-            return lharmony, test_vec
+            print('Local harmony: {}\nCenter number: {}\nCenter: {}'.format(
+                    lharmony, lidx, test_vec))
         else:
-            return 'Active dimensions don\'t correspond to a center.'
+            print('Active dimensions don\'t correspond to a center.')
+        return
 
     def hamming_dist(self, vec0, vec1):
         return sum(f0 != f1 for f0, f1 in zip(vec0, vec1))
@@ -430,7 +437,8 @@ class Struct(object):
             if nempties == self.max_sent_length:
                 # This is a choice:
                 local_harmonies[c] *= self.missing_link_cost**self.max_links
-                pass
+#                pass
+                continue
             for link in active_links:
                 # get locations of feat vecs
                 _, dep_word_nr, head_word_nr, head_dep = link.split('_')
@@ -450,10 +458,46 @@ class Struct(object):
                 v1 = center[head_slice]
                 local_harmonies[c] *= self.feat_match(v0, v1)
             # Penalizing missing links
-            if len(active_links) < self.max_links - nempties:
-                local_harmonies[c] *= (self.missing_link_cost **
-                                       (self.max_links -
-                                        len(active_links)))
+            active_words = [nonzero[i] for i, dim in enumerate(nonzero)
+                            for ph in self.phon_forms if ph in dim]
+            spl = [item.split('_') for item in active_words]
+            assert max([len(it) for it in spl]) == 2, 'Error identifying words'
+            for pos, word in spl:
+                if word == 'EMPTY':
+                    continue
+                ambig = [ph for ph in self.lexicon if word in ph]
+                if len(ambig) > 1:
+                    for form in ambig:
+                        head_feats = [self.features[i] for i, val in
+                                      enumerate(self.lexicon[form]['head'])
+                                      if val == 1]
+                        hfeat_pos = [pos + '_' + x for x in head_feats]
+                        # If this form isn't the one in the center, skip it
+                        if not all(x in nonzero for x in hfeat_pos):
+                            continue
+                        if (self.lexicon[form]['gov_req'] and not
+                            any(x for x in active_links if 'L_' + pos + '_W' in x)):
+                            local_harmonies[c] *= self.missing_link_cost
+                        if self.lexicon[form]['dependents'] is not None:
+                            for dep_nr in range(len(self.lexicon[form]['dependents'])):
+                                if (self.lexicon[form]['dep_req'][dep_nr] and
+                                    not any(x for x in active_links if pos +
+                                            '_d' + str(dep_nr) in x)):
+                                    local_harmonies[c] *= self.missing_link_cost
+                else:
+                    if (self.lexicon[word]['gov_req'] and
+                        not any(x for x in active_links if 'L_' + pos + '_W'  in x)):
+                        local_harmonies[c] *= self.missing_link_cost
+                    if self.lexicon[word]['dependents'] is not None:
+                        for dep_nr in range(len(self.lexicon[word]['dependents'])):
+                            if (self.lexicon[word]['dep_req'][dep_nr] and not
+                                any(x for x in active_links if pos + '_d' + str(dep_nr) in x)):
+                                local_harmonies[c] *= self.missing_link_cost
+            # Old way: across-the-board, top-down penalty for too few links
+#            if len(active_links) < self.max_links - nempties:
+#                local_harmonies[c] *= (self.missing_link_cost **
+#                                       (self.max_links -
+#                                        len(active_links)))
         self.local_harmonies = local_harmonies
         return
 
@@ -635,19 +679,21 @@ if __name__ == '__main__':
     file = '../test.yaml'
     sent_len = 3
 #    corp = [['the', 'dog'], ['an', 'cat']]
-    corp = [['the', 'dog', 'eats'],
-            ['an', 'cat', 'eats'],
-            ['dog', 'dog', 'eats']]
+    corp = [['the', 'dog', 'eats'], ['an', 'cat', 'sees']]
+#    corp = [['the', 'dog', 'eats'],
+#            ['an', 'cat', 'eats'],
+#            ['dog', 'dog', 'eats']]
 #    corp = [['dog', 'sees', 'the', 'cat']]
 #    corp = [['the', 'dog', 'sees', 'the', 'cat']]
     # Missing link cost seems to need to be not too small, otherwise it can't
     # get to the attractors with EMPTYs for not-yet-seen words
     sys = Struct(lex_file=file, features=None, max_sent_length=sent_len,
-                 missing_link_cost=0.1, gamma=0.45,
+                 missing_link_cost=0.5, gamma=0.45,
                  stopping_crit='cheb_stop', corpus=corp)
     sys.gen_centers()
     sys.calculate_local_harmonies()
     sys.locate_attrs()
+    sys.set_params(noise_mag=0.0001)
 #    final, data = sys.single_run(['an', 'cat'])
 #    final, data = sys.single_run(['the', 'dog'])
 #    final, data = sys.single_run(['dog', 'eats'])
@@ -664,8 +710,10 @@ if __name__ == '__main__':
     sys.plot_harmony()
     print(sys.which_nonzero(np.round(final)))
     print(data)
+    sys.look_up_center(sys.which_nonzero(np.round(final)))
     mc = sys.many_runs(10, corp[0])
-    print(mc.groupby(['WordNr']).agg({'WordRT':['mean', 'std', 'min', 'max']}))
+    print('\n', mc.groupby(['WordNr']).agg({'WordRT': ['mean', 'std', 'min',
+                                                       'max']}))
 
     # Saving data:
 #    import pickle

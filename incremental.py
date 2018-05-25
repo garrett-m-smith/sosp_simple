@@ -373,13 +373,22 @@ class Struct(object):
                             for i in null_idx:
                                 if lconfig[i] != 0:
                                     to_rm.append(lconfig)
-                    # Finally, removing links to/from EMPTYs
+                    # Now, removing links to/from EMPTYs
                     if word == 'EMPTY':
                         idx = [i for i, ln in enumerate(link_names)
                                if 'W' + str(word_nr) in ln]
                         for lconfig in link_vecs:
                             if any([lconfig[j] for j in idx]):
                                 to_rm.append(lconfig)
+                # Finally, removing any link configs w/ multiple links to
+                # same attch. site
+                    for lconfig in link_vecs:
+                        mult_gov = [l for l in link_names if 'L_W' +
+                                    str(word_nr) in l]
+                        idx = [i for i, ln in enumerate(self.link_names) if ln
+                               in mult_gov]
+                        if sum([lconfig[i] for i in idx]) >= 2:
+                            to_rm.append(lconfig)
                 # Excluding to_rm
                 configs_to_use = [c for c in link_vecs if c not in to_rm]
                 for config in configs_to_use:
@@ -676,10 +685,12 @@ class Struct(object):
 
 
 if __name__ == '__main__':
-    file = '../test.yaml'
-    sent_len = 3
+#    file = '../test.yaml'
+    file = '../../Dissertation/Models/LCLexicon.yaml'
+    sent_len = 4
 #    corp = [['the', 'dog'], ['an', 'cat']]
-    corp = [['the', 'dog', 'eats'], ['an', 'cat', 'sees']]
+#    corp = [['the', 'dog', 'eats'], ['an', 'cat', 'sees']]
+    corp = [['smiled', 'at', 'player', 'thrown']]
 #    corp = [['the', 'dog', 'eats'],
 #            ['an', 'cat', 'eats'],
 #            ['dog', 'dog', 'eats']]
@@ -687,21 +698,27 @@ if __name__ == '__main__':
 #    corp = [['the', 'dog', 'sees', 'the', 'cat']]
     # Missing link cost seems to need to be not too small, otherwise it can't
     # get to the attractors with EMPTYs for not-yet-seen words
-    sys = Struct(lex_file=file, features=None, max_sent_length=sent_len,
+#    sys = Struct(lex_file=file, features=None, max_sent_length=sent_len,
+#                 missing_link_cost=0.5, gamma=0.45,
+#                 stopping_crit='cheb_stop', corpus=corp)
+    sys = Struct(lex_file=file, features=['N', 'Prep', 'MainVerb',
+                                          'Participle'],
+                 max_sent_length=sent_len,
                  missing_link_cost=0.5, gamma=0.45,
                  stopping_crit='cheb_stop', corpus=corp)
     sys.gen_centers()
     sys.calculate_local_harmonies()
     sys.locate_attrs()
-    sys.set_params(noise_mag=0.0001)
+    sys.set_params(noise_mag=0.00005)
 #    final, data = sys.single_run(['an', 'cat'])
 #    final, data = sys.single_run(['the', 'dog'])
 #    final, data = sys.single_run(['dog', 'eats'])
-    final, data = sys.single_run(['the', 'dog', 'eats'])
+#    final, data = sys.single_run(['the', 'dog', 'eats'])
 #    final, data = sys.single_run(['dog', 'dog', 'eats'])
 #    final, data = sys.single_run(['an', 'cat', 'eats'])
 #    final, data = sys.single_run(['dog', 'sees', 'the', 'cat'])
 #    final, data = sys.single_run(['the', 'dog', 'sees', 'the', 'cat'])
+    final, data = sys.single_run(corp[0])
     sns.distplot(sys.local_harmonies, kde=False, rug=True)
     plt.title('Distribution of $h_i$')
     plt.show()
@@ -711,9 +728,9 @@ if __name__ == '__main__':
     print(sys.which_nonzero(np.round(final)))
     print(data)
     sys.look_up_center(sys.which_nonzero(np.round(final)))
-    mc = sys.many_runs(10, corp[0])
-    print('\n', mc.groupby(['WordNr']).agg({'WordRT': ['mean', 'std', 'min',
-                                                       'max']}))
+#    mc = sys.many_runs(10, corp[0])
+#    print('\n', mc.groupby(['WordNr']).agg({'WordRT': ['mean', 'std', 'min',
+#                                                       'max']}))
 
     # Saving data:
 #    import pickle

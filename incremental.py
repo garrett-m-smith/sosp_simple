@@ -56,7 +56,7 @@ import numpy as np
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 import seaborn as sns
-from .dynamics import calc_harmony, iterate, euclid_stop, vel_stop, cheb_stop
+from dynamics import calc_harmony, iterate, euclid_stop, vel_stop, cheb_stop
 import pandas as pd
 
 
@@ -547,6 +547,7 @@ class Struct(object):
         stop = self.ndim - self.nlinks
         idx = slice(start, stop)
         updated_state[idx] = whole_vec
+        updated_state[-self.nlinks:] *= 0.0  # Implementing pull-back
         return updated_state
 
     def neg_harmony(self, x, centers, local_harmonies, gamma):
@@ -687,29 +688,30 @@ class Struct(object):
 if __name__ == '__main__':
 #    file = '../test.yaml'
     file = '../../Dissertation/Models/LCLexicon.yaml'
-    sent_len = 4
 #    corp = [['the', 'dog'], ['an', 'cat']]
 #    corp = [['the', 'dog', 'eats'], ['an', 'cat', 'sees']]
-    corp = [['smiled', 'at', 'player', 'thrown']]
+#    corp = [['smiled', 'at', 'player', 'thrown']]
 #    corp = [['the', 'dog', 'eats'],
 #            ['an', 'cat', 'eats'],
 #            ['dog', 'dog', 'eats']]
 #    corp = [['dog', 'sees', 'the', 'cat']]
 #    corp = [['the', 'dog', 'sees', 'the', 'cat']]
+    corp = [['at', 'player', 'tossed'], ['at', 'player', 'thrown']]
+    sent_len = max([len(i) for i in corp])
     # Missing link cost seems to need to be not too small, otherwise it can't
     # get to the attractors with EMPTYs for not-yet-seen words
 #    sys = Struct(lex_file=file, features=None, max_sent_length=sent_len,
-#                 missing_link_cost=0.5, gamma=0.45,
+#                 missing_link_cost=0.5, gamma=0.4,
 #                 stopping_crit='cheb_stop', corpus=corp)
     sys = Struct(lex_file=file, features=['N', 'Prep', 'MainVerb',
                                           'Participle'],
                  max_sent_length=sent_len,
-                 missing_link_cost=0.5, gamma=0.45,
+                 missing_link_cost=0.5, gamma=0.4,
                  stopping_crit='cheb_stop', corpus=corp)
     sys.gen_centers()
     sys.calculate_local_harmonies()
     sys.locate_attrs()
-    sys.set_params(noise_mag=0.00005)
+#    sys.set_params(noise_mag=0.00005)
 #    final, data = sys.single_run(['an', 'cat'])
 #    final, data = sys.single_run(['the', 'dog'])
 #    final, data = sys.single_run(['dog', 'eats'])
@@ -728,10 +730,10 @@ if __name__ == '__main__':
     print(sys.which_nonzero(np.round(final)))
     print(data)
     sys.look_up_center(sys.which_nonzero(np.round(final)))
-#    mc = sys.many_runs(10, corp[0])
-#    print('\n', mc.groupby(['WordNr']).agg({'WordRT': ['mean', 'std', 'min',
-#                                                       'max']}))
-
+    mc = sys.many_runs(500, corp[0])
+    print('\n', mc.groupby(['WordNr']).agg({'WordRT': ['mean', 'std', 'min',
+                                                       'max']}))
+    print(mc[mc['WordNr'] == 2].groupby(['FinalCenterNr']).agg({'WordRT': ['mean', 'std', 'count']}))
     # Saving data:
 #    import pickle
 #    with open('sosp_test_5word.pkl', 'wb') as output:

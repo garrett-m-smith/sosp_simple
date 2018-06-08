@@ -59,7 +59,7 @@ import numpy as np
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 import seaborn as sns
-from .dynamics import calc_harmony, iterate, euclid_stop, vel_stop, cheb_stop
+from dynamics import calc_harmony, iterate, euclid_stop, vel_stop, cheb_stop
 import pandas as pd
 
 
@@ -94,7 +94,8 @@ class Struct(object):
         else:
             self.stopping_crit = euclid_stop
 
-        self.tau = 0.01  # Time step for discretized dynamics
+#        self.tau = 0.01  # Time step for discretized dynamics
+        self.tau = 0.1
         self.max_time = 10000  # Max. number of time steps
         self.noise_mag = 0.0001  # default
         self.tol = 0.05  # Stopping tolerance
@@ -571,7 +572,7 @@ class Struct(object):
                                       self.gamma), method='L-BFGS-B',
                                 jac=self.jac_neg_harmony)
             attrs[c] = extremum.x
-        unique_attrs = np.unique(np.round(attrs, 6), axis=0)
+        unique_attrs = np.unique(np.round(attrs, 2), axis=0)
         self.attrs = unique_attrs
         print('Found {} unique attractors from {} centers'.format(
                 self.attrs.shape[0], self.centers.shape[0]))
@@ -710,12 +711,13 @@ if __name__ == '__main__':
     sys = Struct(lex_file=file, features=['N', 'Prep', 'MainVerb',
                                           'Participle'],
                  max_sent_length=sent_len,
-                 missing_link_cost=0.5, gamma=0.4,
+                 missing_link_cost=0.5, gamma=0.3,
                  stopping_crit='cheb_stop', corpus=corp)
     sys.gen_centers()
     sys.calculate_local_harmonies()
     sys.locate_attrs()
-#    sys.set_params(noise_mag=0.00005)
+#    sys.set_params(noise_mag=0.0001)
+#    sys.set_params(max_time=30000)
 #    final, data = sys.single_run(['an', 'cat'])
 #    final, data = sys.single_run(['the', 'dog'])
 #    final, data = sys.single_run(['dog', 'eats'])
@@ -734,7 +736,7 @@ if __name__ == '__main__':
     print(sys.which_nonzero(np.round(final)))
     print(data)
     sys.look_up_center(sys.which_nonzero(np.round(final)))
-    mc = sys.many_runs(500, corp[0])
+    mc = sys.many_runs(2000, corp[0])
     print('\n', mc.groupby(['WordNr']).agg({'WordRT': ['mean', 'std', 'min',
                                                        'max']}))
     print(mc[mc['WordNr'] == 2].groupby(['FinalCenterNr']).agg({'WordRT': ['mean', 'std', 'count']}))

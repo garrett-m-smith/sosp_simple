@@ -59,7 +59,7 @@ import numpy as np
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 import seaborn as sns
-from dynamics import calc_harmony, iterate, euclid_stop, vel_stop, cheb_stop
+from .dynamics import calc_harmony, iterate, euclid_stop, vel_stop, cheb_stop
 import pandas as pd
 
 

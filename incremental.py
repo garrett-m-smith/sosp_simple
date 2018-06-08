@@ -42,6 +42,9 @@ attr. instead of immediately being at a, w0 w1 EMPTY (no link) low-harm. attr.
 DESIGN CHOICE: Include a full lexicon, but if only want to consider particular
 sequences, simply pass a corpus of those sequences.
 
+DESIGN CHOICE: Using pullback: when a new word is input, the link strengths are
+multiplied by a parameter self.pullback that weakens them (or turns them off).
+
 Later maybe: Info about the expected direction of dependents would reduce the
 number of dim. Also, after calculating harmonies, could eliminate very
 low-harmony centers to simplify system.
@@ -95,6 +98,7 @@ class Struct(object):
         self.max_time = 10000  # Max. number of time steps
         self.noise_mag = 0.0001  # default
         self.tol = 0.05  # Stopping tolerance
+        self.pullback = 0.0
 
         if features is None:
             self.features = ['Det', 'N', 'V', 'sg', 'pl']
@@ -547,7 +551,7 @@ class Struct(object):
         stop = self.ndim - self.nlinks
         idx = slice(start, stop)
         updated_state[idx] = whole_vec
-        updated_state[-self.nlinks:] *= 0.0  # Implementing pull-back
+        updated_state[-self.nlinks:] *= self.pullback  # Implementing pull-back
         return updated_state
 
     def neg_harmony(self, x, centers, local_harmonies, gamma):

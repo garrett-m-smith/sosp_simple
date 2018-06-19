@@ -115,20 +115,19 @@ class SimpleModel(object):
     def run_multiple_conditions(self, n_runs=100, conditions=None,
                                 init_cond=None):
         """Do many runs of multiple conditions by changing the harmony
-        landscape between conditions. This is only useful when defining the
-        harmonies manually, not when they are built from a corpus.
-        
+        landscape between conditions.
+
         Assumes the harmonies for each center are a row of a NumPy array.
         """
+        if init_cond is None:
+            state_init = np.zeros((len(conditions), self.state_hist.shape[1]))
+        else:
+            state_init = init_cond
         all_data = []
         for cond in range(conditions.shape[0]):
-            if init_cond is None:
-                state_init = np.zeros(self.state_hist.shape[1])
-            else:
-                state_init = init_cond[cond]
             self.set_local_harmonies(conditions[cond,])
             print('Condition {}'.format(cond))
-            cond_data = self.many_runs(n_runs, state_init)
+            cond_data = self.many_runs(n_runs, state_init[cond,])
             cond_data['Condition'] = [cond] * n_runs
             all_data.append(cond_data)
         return pd.concat(all_data)

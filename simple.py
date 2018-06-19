@@ -118,12 +118,14 @@ class SimpleModel(object):
         landscape between conditions. This is only useful when defining the
         harmonies manually, not when they are built from a corpus.
         
-        Assumes the harmonies for each are a row of a NumPy array.
+        Assumes the harmonies for each center are a row of a NumPy array.
         """
-        if init_cond is None:
-            state_init = np.zeros(self.state_hist.shape[1])
         all_data = []
         for cond in range(conditions.shape[0]):
+            if init_cond is None:
+                state_init = np.zeros(self.state_hist.shape[1])
+            else:
+                state_init = init_cond[cond]
             self.set_local_harmonies(conditions[cond,])
             print('Condition {}'.format(cond))
             cond_data = self.many_runs(n_runs, state_init)

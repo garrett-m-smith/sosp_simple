@@ -18,7 +18,7 @@ prob. more.
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from dynamics import iterate, euclid_stop, vel_stop, cheb_stop
+from .dynamics import iterate, euclid_stop, vel_stop, cheb_stop
 
 
 class SimpleModel(object):

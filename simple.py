@@ -18,7 +18,8 @@ prob. more.
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from .dynamics import iterate, euclid_stop, vel_stop, cheb_stop
+from scipy.optimize import minimize
+from .dynamics import iterate, euclid_stop, vel_stop, cheb_stop, calc_harmony
 
 
 class SimpleModel(object):
@@ -132,6 +133,29 @@ class SimpleModel(object):
             cond_data['Condition'] = [cond] * n_runs
             all_data.append(cond_data)
         return pd.concat(all_data)
+
+    def neg_harmony(self, x, centers, local_harmonies, gamma):
+        return -1 * calc_harmony(x, centers, local_harmonies, gamma)
+
+    def jac_neg_harmony(self, x, centers, local_harmonies, gamma):
+        return -1 * iterate(x, centers, local_harmonies, gamma)
+
+    def locate_attrs(self):
+        """Finds actual locations of attractors in the full harmony landscape
+        using the Newton-CG algorithm on the negative of the harmony fn.
+        """
+        attrs = np.zeros(self.centers.shape)
+        for c in range(self.centers.shape[0]):
+            extremum = minimize(self.neg_harmony, self.centers[c],
+                                args=(self.centers, self.local_harmonies,
+                                      self.gamma), method='L-BFGS-B',
+                                jac=self.jac_neg_harmony)
+            attrs[c] = extremum.x
+        unique_attrs = np.unique(np.round(attrs, 2), axis=0)
+        self.attrs = unique_attrs
+        print('Found {} unique attractors from {} centers'.format(
+                self.attrs.shape[0], self.centers.shape[0]))
+        return
 
     def plot_trace(self):
         trunc = self.state_hist[~np.all(self.state_hist == 0, axis=1)]

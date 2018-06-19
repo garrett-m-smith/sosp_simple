@@ -18,7 +18,7 @@ prob. more.
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from .dynamics import iterate, euclid_stop, vel_stop
+from dynamics import iterate, euclid_stop, vel_stop, cheb_stop
 
 
 class SimpleModel(object):
@@ -41,6 +41,8 @@ class SimpleModel(object):
             self.local_harmonies = local_harmonies
         if stopping_crit == 'vel_stop':
             self.stopping_crit = vel_stop
+        elif stopping_crit == 'cheb_stop':
+            self.stopping_crit = cheb_stop
         else:
             self.stopping_crit = euclid_stop
 
@@ -119,9 +121,8 @@ class SimpleModel(object):
 
         Assumes the harmonies for each center are a row of a NumPy array.
         """
-        if init_cond is None:
-            state_init = np.zeros((len(conditions), self.state_hist.shape[1]))
-        else:
+        state_init = np.zeros((len(conditions), self.state_hist.shape[1]))
+        if init_cond is not None:
             state_init = init_cond
         all_data = []
         for cond in range(conditions.shape[0]):
@@ -145,14 +146,17 @@ if __name__ == '__main__':
     centers = np.array([[0., 1.], [1., 0.]])
     harmonies = np.array([1.0, 1.0])
     xinit = np.array([0., 0.])
-    test = SimpleModel(None, centers, harmonies, 'euclid_stop')
+    test = SimpleModel(None, centers, harmonies, 'cheb_stop')
     # test.set_tol(0.01)
     # test.single_run(xinit)
     # test.plot_trace()
     # results = test.many_runs(50, init_cond=xinit)
     # print(results.groupby('CenterNr').agg(['count', 'mean', 'std']))
 
+    test.set_noise_mag(0.005)
     conds = np.array([[1.0, 1.0], [0.5, 1.0]])
-    many_results = test.run_multiple_conditions(n_runs=10, conditions=conds)
+    init = np.array([[0.5, 0.5], [0.5, 0.5]])
+    many_results = test.run_multiple_conditions(n_runs=10, conditions=conds,
+                                                init_cond=init)
     print(many_results.groupby(['Condition', 'CenterNr']).agg(
             ['count', 'mean', 'std']))

@@ -88,7 +88,8 @@ class SimpleModel(object):
                  * np.random.normal(0, 1, self.state_hist.shape))
         t = 0
         while t < self.max_time-1:
-            if self.stopping_crit(self.state_hist[t], self.centers, self.tol):
+            if self.stopping_crit(self.state_hist[t], self.attrs, self.tol):
+#            if self.stopping_crit(self.state_hist[t], self.centers, self.tol):
                 self.state_hist[t+1,] = (self.state_hist[t,]
                         + self.tau * iterate(self.state_hist[t,], self.centers,
                                              self.local_harmonies, self.gamma)
@@ -127,6 +128,7 @@ class SimpleModel(object):
             state_init = init_cond
         all_data = []
         for cond in range(conditions.shape[0]):
+            self.locate_attrs()
             self.set_local_harmonies(conditions[cond,])
             print('Condition {}'.format(cond))
             cond_data = self.many_runs(n_runs, state_init[cond,])

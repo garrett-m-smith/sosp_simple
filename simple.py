@@ -128,8 +128,8 @@ class SimpleModel(object):
             state_init = init_cond
         all_data = []
         for cond in range(conditions.shape[0]):
-            self.locate_attrs()
             self.set_local_harmonies(conditions[cond,])
+            self.locate_attrs()
             print('Condition {}'.format(cond))
             cond_data = self.many_runs(n_runs, state_init[cond,])
             cond_data['Condition'] = [cond] * n_runs

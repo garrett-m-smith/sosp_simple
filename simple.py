@@ -19,7 +19,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.optimize import minimize
-from .dynamics import iterate, euclid_stop, vel_stop, cheb_stop, calc_harmony
+from dynamics import iterate, euclid_stop, vel_stop, cheb_stop, calc_harmony
 
 
 class SimpleModel(object):
@@ -51,8 +51,8 @@ class SimpleModel(object):
         self.max_time = 1000  # Max. number of time steps
         self._zero_state_hist()
         self.noise_mag = 0.001  # default
-        self.gamma = 0.25
-        self.tol = 0.05  # Stopping tolerance on each dim.
+        self.gamma = [0.25] * centers.shape[1]  # default
+        self.tol = 0.1  # Stopping tolerance on each dim.
 
     def read_corpus(self, filename=None):
         print('Not yet implemented.')
@@ -129,8 +129,6 @@ class SimpleModel(object):
         all_data = []
         for cond in range(conditions.shape[0]):
             self.set_local_harmonies(conditions[cond,])
-            if gamma is not None:
-                self.set_gamma(gamma[cond])
             self.locate_attrs()
             print('Condition {}'.format(cond))
             cond_data = self.many_runs(n_runs, state_init[cond,])

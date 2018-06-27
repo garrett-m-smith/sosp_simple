@@ -117,7 +117,7 @@ class SimpleModel(object):
                           for i in data_list])
 
     def run_multiple_conditions(self, n_runs=100, conditions=None,
-                                init_cond=None):
+                                init_cond=None, gamma=None):
         """Do many runs of multiple conditions by changing the harmony
         landscape between conditions.
 
@@ -129,6 +129,8 @@ class SimpleModel(object):
         all_data = []
         for cond in range(conditions.shape[0]):
             self.set_local_harmonies(conditions[cond,])
+            if gamma is not None:
+                self.set_gamma(gamma[cond])
             self.locate_attrs()
             print('Condition {}'.format(cond))
             cond_data = self.many_runs(n_runs, state_init[cond,])

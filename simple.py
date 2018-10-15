@@ -19,7 +19,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.optimize import minimize
-from dynamics import iterate, euclid_stop, vel_stop, cheb_stop, calc_harmony
+from .dynamics import iterate, euclid_stop, vel_stop, cheb_stop, calc_harmony
 
 
 class SimpleModel(object):
@@ -132,7 +132,8 @@ class SimpleModel(object):
             self.locate_attrs()
             print('Condition {}'.format(cond))
             cond_data = self.many_runs(n_runs, state_init[cond,])
-            cond_data['Condition'] = [cond] * n_runs
+#            cond_data['Condition'] = [cond] * n_runs
+            cond_data['Condition'] = cond  # Make all rows have same value
             all_data.append(cond_data)
         return pd.concat(all_data)
 

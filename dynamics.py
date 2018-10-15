@@ -10,10 +10,10 @@ Defining the equations for the dynamics
 
 import numpy as np
 from scipy.spatial.distance import cdist
-from numba import jit
+#from numba import jit
 
 
-@jit(nopython=True)
+#@jit(nopython=True)
 def _phi(x, center, gamma):
     """Radial basis function \phi. Returns a scalar.
     """
@@ -24,7 +24,7 @@ def _phi(x, center, gamma):
     return np.exp(-np.dot(x - center, x - center) / gamma)
 
 
-@jit(nopython=True)
+#@jit(nopython=True)
 def calc_harmony(x, centers, local_harmonies, gamma):
     """Calculate the global harmony at a given position.
     Assumes centers is an array with the coordinates of one center on each
@@ -36,7 +36,7 @@ def calc_harmony(x, centers, local_harmonies, gamma):
     return harmony
 
 
-@jit(nopython=True)
+#@jit(nopython=True)
 def calc_harmony_bc(x, centers, local_harmonies, gamma, alpha):
     """Calculate the global harmony at a given position with baseline
     constraint. Assumes centers is an array with the coordinates of one center
@@ -50,7 +50,7 @@ def calc_harmony_bc(x, centers, local_harmonies, gamma, alpha):
     return harmony
 
 
-@jit(nopython=True)
+#@jit(nopython=True)
 def iterate(x, centers, harmonies, gamma):
     """Iterate the discretized dynamics.
     """
@@ -61,7 +61,7 @@ def iterate(x, centers, harmonies, gamma):
     return mult * dx
 
 
-@jit(nopython=True)
+#@jit(nopython=True)
 def iterate_bc(x, centers, harmonies, gamma, alpha):
     """Iterate the discretized dynamics.
     """

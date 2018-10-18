@@ -23,16 +23,11 @@ from .dynamics import iterate, euclid_stop, vel_stop, cheb_stop, calc_harmony
 
 
 class SimpleModel(object):
-    def __init__(self, corpus_filename=None, centers=None,
-                 local_harmonies=None, stopping_crit='euclid_stop'):
-        assert corpus_filename is None or (centers is None
-                                           and local_harmonies is None), \
-            """Either specify a lexicon filename or centers and harmonies,
-            but not both."""
+    def __init__(self, centers=None, local_harmonies=None,
+                 stopping_crit='euclid_stop'):
 
-        if corpus_filename is not None:
-            self.read_corpus(corpus_filename)
         if centers is not None:
+            # Not sure why I wanted this to be 2D... Leaving for now.
             assert len(centers.shape) > 1, 'centers must be a 2D array.'
             self.centers = centers
             self.n_dim = self.centers.shape[1]
@@ -53,10 +48,6 @@ class SimpleModel(object):
         self.noise_mag = 0.001  # default
         self.gamma = [0.25] * centers.shape[1]  # default
         self.tol = 0.1  # Stopping tolerance on each dim.
-
-    def read_corpus(self, filename=None):
-        print('Not yet implemented.')
-        return True
 
     def _zero_state_hist(self):
         self.state_hist = np.zeros((self.max_time, self.n_dim))
@@ -79,6 +70,15 @@ class SimpleModel(object):
     def single_run(self, init_cond=None):
         """Run the model once until stopping criterion is met or 
         time runs out.
+
+        Parameters
+        ----------
+        init_cond : array
+            Point in state space at which to initialize the system
+        
+        Returns
+        -------
+        Nothing. Updates the state_hist attribute of the object.
         """
         assert init_cond is not None, 'Must set initial conditions.'
         assert len(init_cond) == self.state_hist.shape[1], \
@@ -99,8 +99,18 @@ class SimpleModel(object):
                 break
 
     def many_runs(self, n_runs=100, init_cond=None):
-        """Do repeated Monte Carlo runs, potenially in different conditions.
-        Returns a Pandas data frame with the center number and settling time.
+        """Do repeated Monte Carlo runs on a single harmony landscape.
+
+        Parameters
+        ----------
+        n_runs : scalar
+            The number of runs to do per condition
+        init_cond : array
+            Point in state space at which to initialize the system
+
+        Returns
+        -------
+        A Pandas data frame with the center number and settling time.
         """
         print('Run number:')
         data_list = []
@@ -121,7 +131,23 @@ class SimpleModel(object):
         """Do many runs of multiple conditions by changing the harmony
         landscape between conditions.
 
-        Assumes the harmonies for each center are a row of a NumPy array.
+        Parameters
+        ----------
+        n_runs : scalar
+            The number of runs to do per condition
+        conditions : array
+            An array with the local harmonies of each attractor in the
+            columns. Each row is a different condition
+        init_cond : array
+            Point in state space at which to initialize the system
+        gamma : scalar
+            Width parameter for RBFs. Not used.
+
+        Returns
+        -------
+        all_data
+            A pandas dataframe with columns for which center was chosen,
+            how long the settling took, and the condition number.
         """
         state_init = np.zeros((len(conditions), self.state_hist.shape[1]))
         if init_cond is not None:
@@ -138,14 +164,20 @@ class SimpleModel(object):
         return pd.concat(all_data)
 
     def neg_harmony(self, x, centers, local_harmonies, gamma):
+        """Returns the negative of the harmony function.
+        """
         return -1 * calc_harmony(x, centers, local_harmonies, gamma)
 
     def jac_neg_harmony(self, x, centers, local_harmonies, gamma):
+        """Returns the negative of the dynamics for use as the Jacobian
+        when finding the exact locations of the attractors.
+        """
         return -1 * iterate(x, centers, local_harmonies, gamma)
 
     def locate_attrs(self):
         """Finds actual locations of attractors in the full harmony landscape
-        using the Newton-CG algorithm on the negative of the harmony fn.
+        using the L-BFGS-B algorithm on the negative of the harmony fn. Finds
+        the unique attractors by rounding to two decimal places.
         """
         attrs = np.zeros(self.centers.shape)
         for c in range(self.centers.shape[0]):
@@ -161,6 +193,8 @@ class SimpleModel(object):
         return
 
     def plot_trace(self):
+        """Plots the trajectory of the latest run.
+        """
         trunc = self.state_hist[~np.all(self.state_hist == 0, axis=1)]
         plt.plot(trunc)
         plt.ylim(-0.01, 1.01)
@@ -173,7 +207,7 @@ if __name__ == '__main__':
     centers = np.array([[0., 1.], [1., 0.]])
     harmonies = np.array([1.0, 1.0])
     xinit = np.array([0., 0.])
-    test = SimpleModel(None, centers, harmonies, 'cheb_stop')
+    test = SimpleModel(centers, harmonies, 'cheb_stop')
     # test.set_tol(0.01)
     # test.single_run(xinit)
     # test.plot_trace()

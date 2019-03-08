@@ -120,11 +120,15 @@ class SimpleModel(object):
             self._zero_state_hist()
             self.single_run(init_cond)
             trunc = self.state_hist[~np.all(self.state_hist == 0, axis=1)]
+            # Should probably use the actual attractors instead of the centers
             for center in range(self.centers.shape[0]):
                 if np.all(np.round(trunc[-1,]) == self.centers[center,]):
                     data_list.append([center, trunc.shape[0]])
-                else:
-                    data_list.append([np.NaN, trunc.shape[0]])
+                    break
+            # Is executed after the for loop, but not if it found a center
+            # and used the break statement
+            else:
+                data_list.append([np.NaN, trunc.shape[0]])
         return pd.concat([pd.DataFrame([i], columns=('CenterNr', 'Time',))
                           for i in data_list])
 

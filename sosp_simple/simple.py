@@ -123,6 +123,8 @@ class SimpleModel(object):
             for center in range(self.centers.shape[0]):
                 if np.all(np.round(trunc[-1,]) == self.centers[center,]):
                     data_list.append([center, trunc.shape[0]])
+                else:
+                    data_list.append([np.NaN, trunc.shape[0]])
         return pd.concat([pd.DataFrame([i], columns=('CenterNr', 'Time',))
                           for i in data_list])
 

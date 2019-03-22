@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-setup(name='sosp_simple', version='1.0',
+setup(name='sosp_simple', version='1.1',
 	  description='A package for simple SOSP models',
 	  url='https://github.com/garrett-m-smith/sosp',
 	  author='Garrett Smith',

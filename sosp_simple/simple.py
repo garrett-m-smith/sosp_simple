@@ -67,6 +67,10 @@ class SimpleModel(object):
     def set_local_harmonies(self, local_harmonies):
         self.local_harmonies = local_harmonies
 
+    def set_params(self, **kwargs):
+        for param, val in kwargs.items():
+            setattr(self, param, val)
+
     def single_run(self, init_cond=None):
         """Run the model once until stopping criterion is met or 
         time runs out.
@@ -98,7 +102,7 @@ class SimpleModel(object):
             else:
                 break
 
-    def many_runs(self, n_runs=100, init_cond=None):
+    def many_runs(self, n_runs=100, init_cond=None, verbose=False):
         """Do repeated Monte Carlo runs on a single harmony landscape.
 
         Parameters
@@ -112,10 +116,10 @@ class SimpleModel(object):
         -------
         A Pandas data frame with the center number and settling time.
         """
-        print('Run number:')
+        #print('Run number:')
         data_list = []
         for run in range(n_runs):
-            if run % 100 == 0:
+            if run % 100 == 0 and verbose:
                 print('[{}] '.format(run), end='')
             self._zero_state_hist()
             self.single_run(init_cond)
@@ -133,7 +137,7 @@ class SimpleModel(object):
                           for i in data_list])
 
     def run_multiple_conditions(self, n_runs=100, conditions=None,
-                                init_cond=None, gamma=None):
+                                init_cond=None, gamma=None, D=None):
         """Do many runs of multiple conditions by changing the harmony
         landscape between conditions.
 
@@ -146,27 +150,44 @@ class SimpleModel(object):
             columns. Each row is a different condition
         init_cond : array
             Point in state space at which to initialize the system
-        gamma : scalar
-            Width parameter for RBFs. Not used.
+        gamma : array
+            Width parameter for RBFs.
+        D : array
+            Noise magnitude.
 
         Returns
         -------
         all_data
             A pandas dataframe with columns for which center was chosen,
-            how long the settling took, and the condition number.
+            how long the settling took, the condition number, gamma, and 
+            D values.
         """
+        if gamma is None:
+            gamma = [self.gamma] * self.centers.shape[0]
+        else:
+            #gamma = [gamma] * self.centers.shape[0]
+            gamma = np.tile(gamma, self.centers.shape[0]).T
+        if D is None:
+            D = [self.noise_mag]
         state_init = np.zeros((len(conditions), self.state_hist.shape[1]))
         if init_cond is not None:
             state_init = init_cond
         all_data = []
-        for cond in range(conditions.shape[0]):
-            self.set_local_harmonies(conditions[cond,])
-            self.locate_attrs()
-            print('Condition {}'.format(cond))
-            cond_data = self.many_runs(n_runs, state_init[cond,])
-#            cond_data['Condition'] = [cond] * n_runs
-            cond_data['Condition'] = cond  # Make all rows have same value
-            all_data.append(cond_data)
+        for curr_g in gamma:
+            for curr_D in D:
+                for cond in range(conditions.shape[0]):
+                    #self.set_local_harmonies(conditions[cond,])
+                    self.set_params(gamma=curr_g,
+                                    local_harmonies=conditions[cond,],
+                                    noise_mag=curr_D)
+                    self.locate_attrs()
+                    #print('Condition {}'.format(cond))
+                    cond_data = self.many_runs(n_runs, state_init[cond,])
+#                   cond_data['Condition'] = [cond] * n_runs
+                    cond_data['Condition'] = cond  # Make all rows have same value
+                    cond_data['gamma'] = curr_g
+                    cond_data['NoiseMag'] = curr_D
+                    all_data.append(cond_data)
         return pd.concat(all_data)
 
     def neg_harmony(self, x, centers, local_harmonies, gamma):
@@ -224,6 +245,9 @@ if __name__ == '__main__':
     conds = np.array([[1.0, 1.0], [0.5, 1.0]])
     init = np.array([[0.5, 0.5], [0.5, 0.5]])
     many_results = test.run_multiple_conditions(n_runs=10, conditions=conds,
-                                                init_cond=init)
+                                                init_cond=init,
+                                                gamma=[0.15, 0.4],
+                                                D=[0.001, 0.005])
     print(many_results.groupby(['Condition', 'CenterNr']).agg(
             ['count', 'mean', 'std']))
+    print(many_results)
